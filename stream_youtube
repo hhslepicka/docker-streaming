@@ -1,0 +1,44 @@
+#!/bin/bash
+
+VBR="4500k"
+FPS="60"
+QUAL="ultrafast"
+YOUTUBE_URL=${YOUTUBE_URL:-"rtmp://a.rtmp.youtube.com/live2"}
+#YOUTUBE_KEY="DEFINE YOURS"
+
+VIDEO_SOURCE=${VIDEO_SOURCE:-":99.0+0,0"}
+VIDEO_RES=${VIDEO_RES:-"1920x1080"}
+
+AUDIO_ENCODER="aac"
+NO_AUDIO_SOURCE="anullsrc"
+AUDIO_SOURCE=${AUDIO_SOURCE:-${NO_AUDIO_SOURCE}}
+
+if [ -z "${YOUTUBE_KEY}" ]; then
+  echo "YOUTUBE_KEY is not defined. You must define it before proceeding."
+  exit 1
+fi
+
+if [[ ${AUDIO_SOURCE} == ${NO_AUDIO_SOURCE} ]]; then
+  ffmpeg \
+   -framerate $FPS \
+   -f x11grab \
+   -thread_queue_size 4096 \
+   -i "$VIDEO_SOURCE" \
+   -f lavfi -i anullsrc \
+   -video_size "${VIDEO_RES}" \
+   -c:v libx264 -pix_fmt yuv420p -preset $QUAL -r $FPS -g $(($FPS *2)) -b:v $VBR \
+   -c:a $AUDIO_ENCODER -threads 6 -ar 44100 -b:a 128k -bufsize 512k -pix_fmt yuv420p \
+   -f flv "$YOUTUBE_URL/$YOUTUBE_KEY" -thread_queue_size 4096
+else
+  ffmpeg \
+   -framerate $FPS \
+   -f x11grab \
+   -thread_queue_size 4096 \
+   -i "$VIDEO_SOURCE" \
+   -stream_loop -1 \
+   -i "$AUDIO_SOURCE" \
+   -video_size "${VIDEO_RES}" \
+   -c:v libx264 -pix_fmt yuv420p -preset $QUAL -r $FPS -g $(($FPS *2)) -b:v $VBR \
+   -c:a $AUDIO_ENCODER -threads 6 -ar 44100 -b:a 128k -bufsize 512k \
+   -f flv "$YOUTUBE_URL/$YOUTUBE_KEY" -thread_queue_size 4096
+fi
